@@ -21,7 +21,7 @@ module.exports = function(grunt) {
 
     // Task configuration.
     clean: {
-      dist: ['dist']
+      dist: ['tmp', 'dist']
     },
 
     jshint: {
@@ -74,31 +74,34 @@ module.exports = function(grunt) {
       }
     },
 
-    sass: {
-      options: {
-        banner: '<%= banner %>'
-      },
-      bootstrap: {
-        src: ['lib/bootstrap.scss'],
-        dest: 'dist/css/<%= pkg.name %>.css'
-      },
-      min: {
+    compass: {
+      dev: {},
+      dist: {
         options: {
-          style: 'compressed'
+          cssDir: 'tmp/css/min',
+          outputStyle: 'compressed'
+        }
+      }
+    },
+
+    rename: {
+      css: {
+        files: [{
+          src: 'tmp/css/bootstrap.css',
+          dest: 'dist/css/<%= pkg.name %>.css'
         },
-        src: ['lib/bootstrap.scss'],
-        dest: 'dist/css/<%= pkg.name %>.min.css'
-      },
-      theme: {
-        src: ['lib/theme.scss'],
-        dest: 'dist/css/<%= pkg.name %>-theme.css'
-      },
-      theme_min: {
-        options: {
-          style: 'compressed'
+        {
+          src: 'tmp/css/theme.css',
+          dest: 'dist/css/<%= pkg.name %>-theme.css'
         },
-        src: ['lib/theme.scss'],
-        dest: 'dist/css/<%= pkg.name %>-theme.min.css'
+        {
+          src: 'tmp/css/min/bootstrap.css',
+          dest: 'dist/css/<%= pkg.name %>.min.css'
+        },
+        {
+          src: 'tmp/css/min/theme.css',
+          dest: 'dist/css/<%= pkg.name %>-theme.min.css'
+        }]
       }
     },
 
@@ -152,9 +155,9 @@ module.exports = function(grunt) {
         files: '<%= jshint.test.src %>',
         tasks: ['jshint:test', 'qunit']
       },
-      sass: {
+      compass: {
         files: 'lib/*.scss',
-        tasks: ['sass']
+        tasks: ['compass']
       }
     },
 
@@ -174,23 +177,24 @@ module.exports = function(grunt) {
   // These plugins provide necessary tasks.
   grunt.loadNpmTasks('browserstack-runner');
   grunt.loadNpmTasks('grunt-contrib-clean');
+  grunt.loadNpmTasks('grunt-contrib-compass');
   grunt.loadNpmTasks('grunt-contrib-concat');
   grunt.loadNpmTasks('grunt-contrib-connect');
   grunt.loadNpmTasks('grunt-contrib-copy');
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-qunit');
-  grunt.loadNpmTasks('grunt-contrib-sass');
   grunt.loadNpmTasks('grunt-contrib-uglify');
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-html-validation');
   grunt.loadNpmTasks('grunt-jekyll');
+  grunt.loadNpmTasks('grunt-rename');
   grunt.loadNpmTasks('grunt-sed');
 
   // Docs HTML validation task
   grunt.registerTask('validate-html', ['jekyll', 'validation']);
 
   // Test task.
-  var testSubtasks = ['dist-css', 'jshint', 'qunit', 'validate-html'];
+  var testSubtasks = ['dist', 'jshint', 'qunit', 'validate-html'];
   // Only run BrowserStack tests under Travis
   if (process.env.TRAVIS) {
     // Only run BrowserStack tests if this is a mainline commit in twbs/bootstrap, or you have your own BrowserStack key
@@ -204,16 +208,16 @@ module.exports = function(grunt) {
   grunt.registerTask('dist-js', ['concat', 'uglify']);
 
   // CSS distribution task.
-  grunt.registerTask('dist-css', ['sass']);
+  grunt.registerTask('dist-css', ['compass', 'rename:css']);
 
   // Fonts distribution task.
-  grunt.registerTask('dist-fonts', ['copy']);
+  grunt.registerTask('dist-fonts', ['copy:fonts']);
 
   // Full distribution task.
   grunt.registerTask('dist', ['clean', 'dist-css', 'dist-fonts', 'dist-js']);
 
   // Default task.
-  grunt.registerTask('default', ['test', 'dist', 'build-customizer']);
+  grunt.registerTask('default', ['test', 'build-customizer']);
 
   // Version numbering task.
   // grunt change-version-number --oldver=A.B.C --newver=X.Y.Z
