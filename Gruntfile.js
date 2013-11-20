@@ -21,7 +21,7 @@ module.exports = function(grunt) {
 
     // Task configuration.
     clean: {
-      dist: ['dist']
+      dist: ['tmp', 'dist']
     },
 
     jshint: {
@@ -74,32 +74,34 @@ module.exports = function(grunt) {
       }
     },
 
-    recess: {
-      options: {
-        compile: true,
-        banner: '<%= banner %>'
-      },
-      bootstrap: {
-        src: ['less/bootstrap.less'],
-        dest: 'dist/css/<%= pkg.name %>.css'
-      },
-      min: {
+    compass: {
+      dev: {},
+      dist: {
         options: {
-          compress: true
+          cssDir: 'tmp/css/min',
+          outputStyle: 'compressed'
+        }
+      }
+    },
+
+    rename: {
+      css: {
+        files: [{
+          src: 'tmp/css/bootstrap.css',
+          dest: 'dist/css/<%= pkg.name %>.css'
         },
-        src: ['less/bootstrap.less'],
-        dest: 'dist/css/<%= pkg.name %>.min.css'
-      },
-      theme: {
-        src: ['less/theme.less'],
-        dest: 'dist/css/<%= pkg.name %>-theme.css'
-      },
-      theme_min: {
-        options: {
-          compress: true
+        {
+          src: 'tmp/css/theme.css',
+          dest: 'dist/css/<%= pkg.name %>-theme.css'
         },
-        src: ['less/theme.less'],
-        dest: 'dist/css/<%= pkg.name %>-theme.min.css'
+        {
+          src: 'tmp/css/min/bootstrap.css',
+          dest: 'dist/css/<%= pkg.name %>.min.css'
+        },
+        {
+          src: 'tmp/css/min/theme.css',
+          dest: 'dist/css/<%= pkg.name %>-theme.min.css'
+        }]
       }
     },
 
@@ -153,9 +155,9 @@ module.exports = function(grunt) {
         files: '<%= jshint.test.src %>',
         tasks: ['jshint:test', 'qunit']
       },
-      recess: {
-        files: 'less/*.less',
-        tasks: ['recess']
+      compass: {
+        files: 'lib/*.scss',
+        tasks: ['compass']
       }
     },
 
@@ -175,6 +177,7 @@ module.exports = function(grunt) {
   // These plugins provide necessary tasks.
   grunt.loadNpmTasks('browserstack-runner');
   grunt.loadNpmTasks('grunt-contrib-clean');
+  grunt.loadNpmTasks('grunt-contrib-compass');
   grunt.loadNpmTasks('grunt-contrib-concat');
   grunt.loadNpmTasks('grunt-contrib-connect');
   grunt.loadNpmTasks('grunt-contrib-copy');
@@ -184,14 +187,14 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-html-validation');
   grunt.loadNpmTasks('grunt-jekyll');
-  grunt.loadNpmTasks('grunt-recess');
+  grunt.loadNpmTasks('grunt-rename');
   grunt.loadNpmTasks('grunt-sed');
 
   // Docs HTML validation task
   grunt.registerTask('validate-html', ['jekyll', 'validation']);
 
   // Test task.
-  var testSubtasks = ['dist-css', 'jshint', 'qunit', 'validate-html'];
+  var testSubtasks = ['dist', 'jshint', 'qunit', 'validate-html'];
   // Only run BrowserStack tests under Travis
   if (process.env.TRAVIS) {
     // Only run BrowserStack tests if this is a mainline commit in twbs/bootstrap, or you have your own BrowserStack key
@@ -205,16 +208,16 @@ module.exports = function(grunt) {
   grunt.registerTask('dist-js', ['concat', 'uglify']);
 
   // CSS distribution task.
-  grunt.registerTask('dist-css', ['recess']);
+  grunt.registerTask('dist-css', ['compass', 'rename:css']);
 
   // Fonts distribution task.
-  grunt.registerTask('dist-fonts', ['copy']);
+  grunt.registerTask('dist-fonts', ['copy:fonts']);
 
   // Full distribution task.
   grunt.registerTask('dist', ['clean', 'dist-css', 'dist-fonts', 'dist-js']);
 
   // Default task.
-  grunt.registerTask('default', ['test', 'dist', 'build-customizer']);
+  grunt.registerTask('default', ['test', 'build-customizer']);
 
   // Version numbering task.
   // grunt change-version-number --oldver=A.B.C --newver=X.Y.Z
@@ -222,7 +225,7 @@ module.exports = function(grunt) {
   grunt.registerTask('change-version-number', ['sed']);
 
   // task for building customizer
-  grunt.registerTask('build-customizer', 'Add scripts/less files to customizer.', function () {
+  grunt.registerTask('build-customizer', 'Add scripts/scss files to customizer.', function () {
     var fs = require('fs')
 
     function getFiles(type) {
@@ -238,7 +241,7 @@ module.exports = function(grunt) {
       return 'var __' + type + ' = ' + JSON.stringify(files) + '\n'
     }
 
-    var files = getFiles('js') + getFiles('less') + getFiles('fonts')
+    var files = getFiles('js') + getFiles('lib') + getFiles('fonts')
     fs.writeFileSync('docs-assets/js/raw-files.js', files)
   });
 };
